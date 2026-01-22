@@ -209,7 +209,7 @@ def main():
                         
                         if save_data(new_data):
                             st.success("Data berhasil disimpan!")
-                            st.experimental_rerun()
+                            st.rerun()
 
         # View Data
         df_raw = load_data()
@@ -240,3 +240,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
