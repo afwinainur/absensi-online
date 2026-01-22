@@ -12,7 +12,7 @@ def get_table():
     # Mengambil credentials dari Streamlit Secrets
     api_key = st.secrets["airtable"]["api_key"]
     base_id = st.secrets["airtable"]["base_id"]
-    table_name = "" # Pastikan nama tabel di Airtable sama persis
+    table_name = "Absensi" # Pastikan nama tabel di Airtable sama persis
     
     api = Api(api_key)
     table = api.table(base_id, table_name)
@@ -194,5 +194,6 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
