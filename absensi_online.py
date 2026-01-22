@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime
 from pyairtable import Api
 import io
+import pytz
 
 # Konfigurasi Halaman
 st.set_page_config(page_title="Sistem Rekap Absensi", page_icon="📅", layout="wide")
@@ -160,10 +161,8 @@ def main():
         # Load data
         df_existing = load_data()
         
-        # Ambil nama unik
         existing_names = []
         if not df_existing.empty and 'Nama' in df_existing.columns:
-            # Pastikan nama diubah ke string dulu sebelum di-sort
             raw_names = df_existing['Nama'].dropna().unique().tolist()
             existing_names = sorted([str(n) for n in raw_names if str(n) not in ["-", "nan", ""]])
 
@@ -197,10 +196,14 @@ def main():
                     if not nama_final:
                         st.error("Nama harus diisi!")
                     else:
-                        now = datetime.now()
+                        # --- PERBAIKAN ZONA WAKTU DI SINI ---
+                        # Tentukan zona waktu WIB (Asia/Jakarta)
+                        tz_jakarta = pytz.timezone('Asia/Jakarta')
+                        now = datetime.now(tz_jakarta)
+                        
                         new_data = {
                             'Tanggal': now.strftime("%Y-%m-%d"),
-                            'Waktu': now.strftime("%H:%M:%S"),
+                            'Waktu': now.strftime("%H:%M:%S"), # Sekarang akan ikut jam WIB
                             'Nama': nama_final,
                             'Aksi': aksi,
                             'Status': status,
@@ -208,7 +211,7 @@ def main():
                         }
                         
                         if save_data(new_data):
-                            st.success("Data berhasil disimpan!")
+                            st.success(f"Sukses! Absen tercatat pukul {new_data['Waktu']} WIB")
                             st.rerun()
 
         # View Data
@@ -218,23 +221,31 @@ def main():
         
         with tab1:
             if not df_raw.empty:
-                tgl = st.date_input("Filter Tanggal", datetime.now().date())
+                # Default filter juga ikut WIB
+                tz_jakarta = pytz.timezone('Asia/Jakarta')
+                today_wib = datetime.now(tz_jakarta).date()
+                
+                tgl = st.date_input("Filter Tanggal", today_wib)
                 df_rekap = process_daily_recap(df_raw)
+                
                 if not df_rekap.empty:
-                    # Pastikan kolom Tanggal di df_rekap tipenya date agar bisa dibandingkan
-                    show = df_rekap[df_rekap['Tanggal'] == tgl]
-                    st.dataframe(show, use_container_width=True)
-                    
-                    exc = generate_excel(show)
-                    st.download_button("Download Excel", exc, f"Rekap_{tgl}.xlsx")
+                    # Pastikan kolom Tanggal tipenya date
+                    # Jika ada error attribute, pastikan process_daily_recap yg terakhir dipakai
+                    try:
+                        show = df_rekap[df_rekap['Tanggal'] == tgl]
+                        st.dataframe(show, use_container_width=True)
+                        
+                        exc = generate_excel(show)
+                        st.download_button("Download Excel", exc, f"Rekap_{tgl}.xlsx")
+                    except Exception as e:
+                        st.warning(f"Data tanggal tidak cocok: {e}")
                 else:
-                    st.info("Belum ada rekap (Data mungkin kosong atau format tanggal salah).")
+                    st.info("Belum ada rekap untuk tanggal ini.")
                     
         with tab2:
             st.dataframe(df_raw, use_container_width=True)
             
     except Exception as e:
-        # INI PENTING: Menangkap error utama dan menampilkannya di layar
         st.error("Terjadi Kesalahan Sistem:")
         st.exception(e)
 
