@@ -67,13 +67,27 @@ def generate_excel(df):
     return output.getvalue()
 
 def process_daily_recap(df):
+    """
+    Mengolah data log mentah menjadi tampilan rekap harian.
+    (Versi Anti-Error DateParseError)
+    """
     if df.empty:
         return pd.DataFrame()
 
-    df['Tanggal'] = pd.to_datetime(df['Tanggal']).dt.date
+    # --- PERBAIKAN DI SINI ---
+    # errors='coerce' artinya: kalau datanya ngaco (misal "-"), ubah jadi NaT (Not a Time)
+    df['Tanggal'] = pd.to_datetime(df['Tanggal'], errors='coerce')
+    
+    # Buang baris yang Tanggal-nya NaT (artinya data sampah/kosong)
+    df = df.dropna(subset=['Tanggal'])
+    
+    # Setelah bersih, baru ambil tanggalnya saja
+    df['Tanggal'] = df['Tanggal'].dt.date
+    # -------------------------
+    
     rekap_list = []
     
-    # Grouping data
+    # Cek apakah kolom Nama ada (untuk jaga-jaga)
     if 'Nama' in df.columns:
         grouped = df.groupby(['Tanggal', 'Nama'])
         
@@ -84,12 +98,18 @@ def process_daily_recap(df):
             check_out_data = group[group['Aksi'] == 'Check Out']
             jam_keluar = check_out_data['Waktu'].max() if not check_out_data.empty else "-"
             
-            status_terakhir = group['Status'].iloc[-1]
+            # Ambil status terakhir (handle jika kolom status kosong)
+            status_terakhir = "-"
+            if 'Status' in group.columns and not group['Status'].empty:
+                status_terakhir = group['Status'].iloc[-1]
             
             # Gabung keterangan
-            ket_list = [str(k) for k in group['Keterangan'].unique() if k not in ["-", None, "nan"]]
+            ket_list = []
+            if 'Keterangan' in group.columns:
+                ket_list = [str(k) for k in group['Keterangan'].unique() if k not in ["-", None, "nan", ""]]
             ket_str = ", ".join(ket_list)
             
+            # Logika Ceklis
             if status_terakhir in ['Izin', 'Sakit']:
                 ceklis_in = "❌"
                 ceklis_out = "❌"
@@ -194,6 +214,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 
