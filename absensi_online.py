@@ -15,7 +15,7 @@ def get_table():
     table_name = "Absensi" # Pastikan nama tabel di Airtable sama persis
     
     api = Api(api_key)
-    table = api.table(base_id, table_name)
+    table = api.table(base_id)
     return table
 
 # --- FUNGSI UTAMA ---
@@ -192,4 +192,5 @@ def main():
         st.dataframe(df_raw, use_container_width=True)
 
 if __name__ == "__main__":
+
     main()
